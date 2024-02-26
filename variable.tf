@@ -67,3 +67,9 @@ variable "asg-iam-instance-profile" {
   description = "IAM instance profile for autoscaled runners"
   default = null
 }
+
+variable "enable-s3-cache" {
+  type = bool
+  description = "Enable s3 cache or not"
+  default = true
+}
