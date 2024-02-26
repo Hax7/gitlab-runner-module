@@ -42,6 +42,10 @@ resource "aws_launch_template" "gitlab-runner" {
   image_id = local.asg-runners-ami
   instance_type = var.asg-runners-ec2-type
   vpc_security_group_ids = var.asg-security-groups
+  instance_market_options {
+    market_type = "spot"
+  }
+
   dynamic "iam_instance_profile" {
     for_each = var.asg-iam-instance-profile != null ? var.asg-iam-instance-profile[*] : []
     content {
