@@ -1,17 +1,19 @@
 resource "aws_iam_policy" "gitlab-runner-manager-policy" {
-  count = var.enabled && var.create-manager ? 1 : 0
+  count = var.enabled && var.create_manager ? 1 : 0
   name = "docker-autoscaler"
-  policy = templatefile("${path.module}/policies/instance-docker-autoscaler-policy.json",
+  policy = templatefile("${path.module}/policies/instance-docker-autoscaler-policy.json.tftpl",
     {
       autoscaling_group_arn = aws_autoscaling_group.gitlab-runners[0].arn
       autoscaling_group_name = aws_autoscaling_group.gitlab-runners[0].name
       aws_region = data.aws_region.current.name
       aws_account_id = data.aws_caller_identity.current.account_id
+      enable_s3_cache = var.enable_s3_cache
+      s3_cache_bucket_arn = var.enable_s3_cache ? aws_s3_bucket.s3_cache[0].arn : null
     })
 }
 
 resource "aws_iam_role" "gitlab-runner-manager-role" {
-  count = var.enabled && var.create-manager ? 1 : 0
+  count = var.enabled && var.create_manager ? 1 : 0
   name = "gitlab-runner-manager-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -31,7 +33,7 @@ resource "aws_iam_role" "gitlab-runner-manager-role" {
 }
 
 resource "aws_iam_instance_profile" "gitlab-runner-manager-profile" {
-  count = var.enabled && var.create-manager ? 1 : 0
+  count = var.enabled && var.create_manager ? 1 : 0
   name = "gitlab-runner-profile"
   role = aws_iam_role.gitlab-runner-manager-role[0].name
 }
@@ -40,14 +42,14 @@ resource "aws_launch_template" "gitlab-runner" {
   count = var.enabled ? 1 : 0
   name = "gitlab-runner-template"
   image_id = local.asg-runners-ami
-  instance_type = var.asg-runners-ec2-type
-  vpc_security_group_ids = var.asg-security-groups
+  instance_type = var.asg_runners_ec2_type
+  vpc_security_group_ids = var.asg_security_groups
   instance_market_options {
     market_type = "spot"
   }
 
   dynamic "iam_instance_profile" {
-    for_each = var.asg-iam-instance-profile != null ? var.asg-iam-instance-profile[*] : []
+    for_each = var.asg_iam_instance_profile != null ? var.asg_iam_instance_profile[*] : []
     content {
       arn = iam_instance_profile.value
     }
@@ -57,10 +59,10 @@ resource "aws_launch_template" "gitlab-runner" {
 resource "aws_autoscaling_group" "gitlab-runners" {
   count = var.enabled ? 1 : 0
   name = "gitlab-runners-asg"
-  max_size = var.asg-max-size
+  max_size = var.asg_max_size
   min_size = 0
   desired_capacity = 0
-  vpc_zone_identifier = var.asg-subnets
+  vpc_zone_identifier = var.asg_subnets
   suspended_processes = [ "AZRebalance" ]
   protect_from_scale_in = true
   launch_template {
@@ -75,83 +77,34 @@ resource "aws_autoscaling_group" "gitlab-runners" {
 }
 
 resource "aws_instance" "gitlab_runner" {
-  count = var.enabled && var.create-manager && var.auth-token != null ? 1 : 0
+  count = var.enabled && var.create_manager && var.auth_token != null ? 1 : 0
   ami           = data.aws_ami.latest_amazon_linux_2023.image_id
-  instance_type = var.manager-ec2-type
+  instance_type = var.manager_ec2_type
   iam_instance_profile = aws_iam_instance_profile.gitlab-runner-manager-profile[0].name
-  subnet_id = one(var.asg-subnets)
-  vpc_security_group_ids = var.manager-security-groups
+  subnet_id = one(var.asg_subnets)
+  vpc_security_group_ids = var.manager_security_groups
   # vpc_security_group_ids = [aws_security_group.allow_ssh_docker.id]
   tags = {
     Name = "Gitlab runner autoscaling manager"
   }
+  user_data_replace_on_change = true
   # User data script to install Docker and GitLab Runner
-  user_data = <<EOF
-#!/bin/bash
+  user_data = templatefile("${path.module}/user-data/manager-user-data.sh.tftpl",
+    {
+    enable_s3_cache = var.enable_s3_cache
+    s3_bucket_name         = var.enable_s3_cache ? aws_s3_bucket.s3_cache[0].id : null
+    aws_region = data.aws_region.current.name
+    autoscaling_group_name = aws_autoscaling_group.gitlab-runners[0].name
+    auth_token = var.auth_token
+    concurrent_limit = local.concurrent-limit
+    max_instances = var.asg_max_size
+    capacity_per_instance = var.capacity_per_instance
 
-yum update -y
-yum install -y docker git
-
-curl -L --output /usr/bin/fleeting-plugin-aws https://gitlab.com/gitlab-org/fleeting/fleeting-plugin-aws/-/releases/v0.4.0/downloads/fleeting-plugin-aws-linux-amd64
-# Give it permission to execute
-chmod +x /usr/bin/fleeting-plugin-aws
-
-# Install GitLab Runner
-curl -sL "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.rpm.sh" | sudo bash
-yum install -y gitlab-runner
-
-# Create default AWS config file
-aws_config=$(cat <<EOF
-[default]
-region = us-east-1
-
-EOF)
-
-mkdir -p ~/.aws
-echo "$aws_config" > ~/.aws/config
-
-runner_config=$(cat <<EOF
-[[runners]]
-  [runners.docker]
-  # Autoscaler config
-  [runners.autoscaler]
-    plugin = "fleeting-plugin-aws"
-
-    capacity_per_instance = 1
-    max_use_count = 1
-    max_instances = 10
-
-    [runners.autoscaler.plugin_config] # plugin specific configuration (see plugin documentation)
-      name             = "${aws_autoscaling_group.gitlab-runners[0].name}" # AWS Autoscaling Group name
-
-    [runners.autoscaler.connector_config]
-      username          = "ec2-user"
-      use_external_addr = true
-
-    [[runners.autoscaler.policy]]
-      idle_count = 0
-      idle_time = "20m0s"
-
-EOF)
-
-# Echo the file content and write it to a file
-echo "$runner_config" > /tmp/config.toml
-
-# Configure GitLab Runner (replace with your GitLab details)
-gitlab-runner register \
-  --non-interactive \
-  --template-config /tmp/config.toml \
-  --url https://gitlab.com \
-  --token ${var.auth-token} \
-  --executor docker-autoscaler \
-  --docker-image alpine:latest \
-  --description "My GitLab Runner" \
-
-EOF
+    })
 }
 
 resource "aws_s3_bucket" "s3_cache" {
-  count = var.enabled && var.enable-s3-cache ? 1 : 0
+  count = var.enabled && var.enable_s3_cache ? 1 : 0
   bucket = "gitlab-shared-cache-${random_id.this.hex}"
   tags = {
     Service = "Gitlab runner s3 shared cache"

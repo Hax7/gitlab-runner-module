@@ -1,0 +1,83 @@
+#!/bin/bash
+
+yum update -y
+yum install -y docker git
+
+curl -L --output /usr/bin/fleeting-plugin-aws https://gitlab.com/gitlab-org/fleeting/fleeting-plugin-aws/-/releases/v0.4.0/downloads/fleeting-plugin-aws-linux-amd64
+# Give it permission to execute
+chmod +x /usr/bin/fleeting-plugin-aws
+
+# Install GitLab Runner
+curl -sL "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.rpm.sh" | sudo bash
+yum install -y gitlab-runner
+
+# Create default AWS config file
+aws_config=$(cat <<EOF
+[default]
+region = ${aws_region}
+
+EOF
+)
+
+mkdir -p ~/.aws
+echo "$aws_config" > ~/.aws/config
+
+runner_config=$(cat <<EOF
+[[runners]]
+  [runners.docker]
+  # Autoscaler config
+  [runners.autoscaler]
+    plugin = "fleeting-plugin-aws"
+
+    capacity_per_instance = ${capacity_per_instance}
+    max_use_count = 1
+    max_instances = ${max_instances}
+
+    [runners.autoscaler.plugin_config] # plugin specific configuration (see plugin documentation)
+      name             = "${autoscaling_group_name}" # AWS Autoscaling Group name
+
+    [runners.autoscaler.connector_config]
+      username          = "ec2-user"
+      use_external_addr = true
+
+    [[runners.autoscaler.policy]]
+      idle_count = 0
+      idle_time = "20m0s"
+
+EOF
+)
+
+# Echo the file content and write it to a file
+echo "$runner_config" > /tmp/config.toml
+
+# Configure GitLab Runner (replace with your GitLab details)
+%{ if enable_s3_cache }
+gitlab-runner register \
+  --non-interactive \
+  --template-config /tmp/config.toml \
+  --url https://gitlab.com \
+  --token ${auth_token} \
+  --executor docker-autoscaler \
+  --docker-image alpine:latest \
+  --cache-type s3 \
+  --cache-shared \
+  --cache-path gitlab-cache \
+  --cache-s3-bucket-name ${s3_bucket_name} \
+  --cache-s3-bucket-location	${aws_region} \
+  --description "GitLab Runner" \
+
+%{else}
+gitlab-runner register \
+  --non-interactive \
+  --template-config /tmp/config.toml \
+  --url https://gitlab.com \
+  --token ${auth_token} \
+  --executor docker-autoscaler \
+  --docker-image alpine:latest \
+  --description "GitLab Runner" \
+
+%{ endif }
+
+
+sed -i 's/concurrent.*/concurrent = ${concurrent_limit}/' /etc/gitlab-runner/config.toml
+systemctl restart gitlab-runner

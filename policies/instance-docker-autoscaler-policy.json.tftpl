@@ -1,6 +1,18 @@
 {
     "Version": "2012-10-17",
     "Statement": [
+        %{ if enable_s3_cache }
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObjectVersion",
+                "s3:GetObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": "${s3_cache_bucket_arn}/*"
+        },
+        %{ endif }
         {
             "Effect": "Allow",
             "Action": [
