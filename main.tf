@@ -152,7 +152,7 @@ EOF
 
 resource "aws_s3_bucket" "s3_cache" {
   count = var.enabled && var.enable-s3-cache ? 1 : 0
-  bucket = "gitlab-shared-cache${random_id.this.hex}"
+  bucket = "gitlab-shared-cache-${random_id.this.hex}"
   tags = {
     Service = "Gitlab runner s3 shared cache"
   }
