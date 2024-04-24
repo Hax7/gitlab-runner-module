@@ -87,7 +87,6 @@ resource "aws_instance" "gitlab_runner" {
   tags = {
     Name = "Gitlab runner autoscaling manager"
   }
-  user_data_replace_on_change = true
   # User data script to install Docker and GitLab Runner
   user_data = templatefile("${path.module}/user-data/manager-user-data.sh.tftpl",
     {
