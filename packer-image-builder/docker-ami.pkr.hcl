@@ -1,8 +1,8 @@
 source "amazon-ebs" "amazon-linux-docker" {
   ami_name      = "amazon-linux-docker-{{timestamp}}"
-  instance_type = "t2.micro"
+  instance_type = "t2.small"
   region        = "us-east-1"
-  subnet_id     = "subnet-0688fba8e0845e1dd"
+  subnet_id     = "subnet-0fdb61294d3c2541c"
   source_ami_filter {
     filters = {
       name                = "al2023-ami-2023.*-x86_64"

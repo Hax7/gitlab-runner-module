@@ -1,81 +1,81 @@
 variable "auth_token" {
-  type = string
+  type        = string
   description = "Gitalb runner authentication token"
-  default = null
+  default     = null
 }
 
 variable "enabled" {
-  type = bool
-  default = true
+  type        = bool
+  default     = true
   description = "Enable or disable the module and its resources"
 }
 
 variable "asg_max_size" {
-  type = number
+  type        = number
   description = "Maximum size of instances"
 }
 
 variable "vpc_id" {
-  type = string
+  type        = string
   description = "VPC ID"
-  default = ""
+  default     = ""
 }
 
 variable "asg_subnets" {
-  type = list(string)
+  type        = list(string)
   description = "Subnets where to create autoscaled instances"
 }
 
 variable "create_manager" {
-  type = bool
+  type        = bool
   description = "Either to create gitlab runner docker autoscaller ec2 or not, If you disable this make sure to have self-host runner already running to configure with docker autoscaller auto scaling group"
-  default = true
+  default     = true
 }
 
 variable "manager_ec2_type" {
-  type = string
+  type        = string
   description = "Gitlab runner manager ec2 instance type"
-  default = "t2.small"
+  default     = "t2.small"
 }
 
 variable "asg_runners_ami" {
-  type = string
+  type        = string
   description = "AMI used in ASG launch template to scale out runners, MUST HAVE DOCKER ENGINE INSTALLED"
-  default = null
+  default     = null
 }
 
 variable "asg_runners_ec2_type" {
-  type = string
+  type        = string
   description = "EC2 instance type for scaled out runners"
-  default = "t2.medium"
+  default     = "t2.medium"
 }
 
 variable "asg_security_groups" {
-  type = list(string)
+  type        = list(string)
   description = "Security Groups of autoscaled runners"
-  default = null
+  default     = null
 }
 
 variable "manager_security_groups" {
-  type = list(string)
+  type        = list(string)
   description = "Security Groups of gitlab manager runner"
-  default = null
+  default     = null
 }
 
 variable "asg_iam_instance_profile" {
-  type = string
+  type        = string
   description = "IAM instance profile for autoscaled runners"
-  default = null
+  default     = null
 }
 
 variable "enable_s3_cache" {
-  type = bool
+  type        = bool
   description = "Enable s3 cache or not"
-  default = true
+  default     = true
 }
 
 variable "capacity_per_instance" {
-  type = number
+  type        = number
   description = "The number of jobs that can be executed concurrently by a single instance."
-  default = 1
+  default     = 1
 }
