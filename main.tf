@@ -40,7 +40,6 @@ resource "aws_iam_instance_profile" "gitlab-runner-manager-profile" {
 
 resource "aws_launch_template" "gitlab-runner" {
   count                  = var.enabled ? 1 : 0
-  name                   = "gitlab-runner-template"
   image_id               = local.asg-runners-ami
   instance_type          = var.asg_runners_ec2_type
   vpc_security_group_ids = var.asg_security_groups
@@ -58,7 +57,6 @@ resource "aws_launch_template" "gitlab-runner" {
 
 resource "aws_autoscaling_group" "gitlab-runners" {
   count                 = var.enabled ? 1 : 0
-  name                  = "gitlab-runners-asg"
   max_size              = var.asg_max_size
   min_size              = 0
   desired_capacity      = 0
