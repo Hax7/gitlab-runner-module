@@ -1,15 +1,7 @@
 resource "aws_iam_policy" "gitlab-runner-manager-policy" {
-  count = var.enabled && var.create_manager ? 1 : 0
-  name  = "docker-autoscaler"
-  policy = templatefile("${path.module}/policies/instance-docker-autoscaler-policy.json.tftpl",
-    {
-      autoscaling_group_arn  = aws_autoscaling_group.gitlab-runners[0].arn
-      autoscaling_group_name = aws_autoscaling_group.gitlab-runners[0].name
-      aws_region             = data.aws_region.current.name
-      aws_account_id         = data.aws_caller_identity.current.account_id
-      enable_s3_cache        = var.enable_s3_cache
-      s3_cache_bucket_arn    = var.enable_s3_cache ? aws_s3_bucket.s3_cache[0].arn : null
-  })
+  count  = var.enabled && var.create_manager ? 1 : 0
+  name   = "docker-autoscaler"
+  policy = jsonencode(local.manager_policy)
 }
 
 resource "aws_iam_role" "gitlab-runner-manager-role" {

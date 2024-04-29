@@ -79,3 +79,9 @@ variable "capacity_per_instance" {
   description = "The number of jobs that can be executed concurrently by a single instance."
   default     = 1
 }
+
+variable "extra_policy_entries" {
+  description = "Optional extra entries to add to the policy"
+  type        = map(any)
+  default     = null
+}
