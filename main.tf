@@ -91,6 +91,11 @@ resource "aws_instance" "gitlab_runner" {
       capacity_per_instance  = var.capacity_per_instance
 
   })
+  lifecycle {
+    ignore_changes = [
+      ami,
+    ]
+  }
 }
 
 resource "aws_s3_bucket" "s3_cache" {
