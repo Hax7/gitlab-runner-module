@@ -47,7 +47,7 @@ resource "aws_launch_template" "gitlab-runner" {
   }
 
   dynamic "tag_specifications" {
-    for_each = lenght(var.tags) > 0 ? [1] : []
+    for_each = length(var.tags) > 0 ? [1] : []
     content {
       resource_type = "instance"
       tags          = var.tags
