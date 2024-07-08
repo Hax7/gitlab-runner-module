@@ -45,6 +45,14 @@ resource "aws_launch_template" "gitlab-runner" {
       arn = iam_instance_profile.value
     }
   }
+
+  dynamic "tag_specifications" {
+    for_each = lenght(var.tags) > 0 ? [1] : []
+    content {
+      resource_type = "instance"
+      tags          = var.tags
+  }
+
 }
 
 resource "aws_autoscaling_group" "gitlab-runners" {

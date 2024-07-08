@@ -85,3 +85,9 @@ variable "extra_policy_entries" {
   type        = map(any)
   default     = null
 }
+
+variable "tags" {
+  description = "A map of tags to add to instances"
+  type        = map(string)
+  default     = {}
+}
