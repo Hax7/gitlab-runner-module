@@ -51,10 +51,10 @@ resource "aws_launch_template" "gitlab-runner" {
     content {
       resource_type = "instance"
       tags          = var.tags
+    }
+
   }
-
 }
-
 resource "aws_autoscaling_group" "gitlab-runners" {
   count                 = var.enabled ? 1 : 0
   max_size              = var.asg_max_size
